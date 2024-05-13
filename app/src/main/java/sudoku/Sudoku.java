@@ -5,8 +5,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Set;
 
 import javafx.application.Application;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -15,6 +17,7 @@ import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
@@ -25,9 +28,11 @@ public class Sudoku extends Application
     private Board board = new Board();
     public static final int SIZE = 9;
     private VBox root;
+    private VBox boardVBox;
     private TextField[][] textFields = new TextField[SIZE][SIZE];
     private int width = 800;
     private int height = 800;
+    private boolean updatingBoard = false;
 
     @Override
     public void start(Stage primaryStage) throws Exception
@@ -39,8 +44,15 @@ public class Sudoku extends Application
         root.getChildren().add(createMenuBar(primaryStage));
 
         GridPane gridPane = new GridPane();
-        root.getChildren().add(gridPane);
+        boardVBox = new VBox();
+        root.getChildren().add(boardVBox);
+        boardVBox.getChildren().add(gridPane);
+        boardVBox.getStyleClass().add("board-vbox");
+        boardVBox.setAlignment(Pos.CENTER);
+        gridPane.setAlignment(Pos.CENTER);
         gridPane.getStyleClass().add("grid-pane");
+
+        root.getStylesheets().add(getClass().getResource("/CitizenCarto.ttf").toExternalForm());
 
         // create a 9x9 grid of text fields
         for (int row = 0; row < SIZE; row++)
@@ -55,33 +67,87 @@ public class Sudoku extends Application
                 textField.setId(row + "-" + col);
                 gridPane.add(textField, col, row);
                 // using CSS to get the darker borders correct
-                if (row % 3 == 2 && col % 3 == 2)
+                if (row == 0 && col == 0) {
+                    // add top left class
+                    textField.getStyleClass().add("top-left-border");
+                } else if (row == 0 && col % 3 == 2) {
+                    // add top right class
+                    textField.getStyleClass().add("top-right-border");
+                } else if (col == 0 && row % 3 == 2) {
+                    // add bottom left class
+                    textField.getStyleClass().add("bottom-left-border");
+                } else if (row == 0) {
+                    // add top border class
+                    textField.getStyleClass().add("top-border");
+                } else if (col == 0) {
+                    // add left border class
+                    textField.getStyleClass().add("left-border");
+                } else if (row % 3 == 2 && col % 3 == 2)
                 {
-                    // we need a special border to highlight the borrom right
+                    // we need a special border to highlight the bottom right
                     textField.getStyleClass().add("bottom-right-border");
                 }
-                else if (col % 3 == 2) { 
+                else if ((col % 3 == 2 && row % 3 == 0) || (col % 3 == 2 && row % 3 == 1)) { 
                     // Thick right border
                     textField.getStyleClass().add("right-border");
                 }
-                else if (row % 3 == 2) { 
+                else if ((col % 3 == 1 && row % 3 == 2) || (col % 3 == 0 && row % 3 == 2)) { 
                     // Thick bottom border
                     textField.getStyleClass().add("bottom-border");
+                } else {
+                    // add an inner-border class
+                    textField.getStyleClass().add("inner-border");
                 }
+
+                textField.addEventHandler(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+                    textField.positionCaret(textField.getText().length());
+                    String id = textField.getId();
+                    String[] parts = id.split("-");
+                    int r = Integer.parseInt(parts[0]);
+                    int c = Integer.parseInt(parts[1]);
+                    if (event.getCode() == KeyCode.LEFT) {
+                        System.out.println("LEFT");
+                        // find the textfield to the left of this one and set the focus to it
+                        
+                        int c2 = (c-1+SIZE)%SIZE;
+
+                        TextField tf = textFields[r][c2];
+                        tf.requestFocus();
+                        tf.positionCaret(tf.getText().length());
+                        setHighlight(tf);
+                    } else if (event.getCode() == KeyCode.RIGHT) {
+                        System.out.println("RIGHT");
+                        // find the textfield to the right of this one and set the focus to it
+                        int c2 = (c+1)%SIZE;
+                        TextField tf = textFields[r][c2];
+                        tf.requestFocus();
+                        tf.positionCaret(tf.getText().length());
+                        setHighlight(tf);
+                    } else if (event.getCode() == KeyCode.UP) {
+                        System.out.println("UP");
+                        // find the textfield above this one and set the focus to it
+                        int r2 = (r-1+SIZE)%SIZE;
+                        TextField tf = textFields[r2][c];
+                        tf.requestFocus();
+                        tf.positionCaret(tf.getText().length());
+                        setHighlight(tf);
+                    } else if (event.getCode() == KeyCode.DOWN) {
+                        System.out.println("DOWN");
+                        // find the textfield below this one and set the focus to it
+                        int r2 = (r+1)%SIZE;
+                        TextField tf = textFields[r2][c];
+                        tf.requestFocus();
+                        tf.positionCaret(tf.getText().length());
+                        setHighlight(tf);
+                    }
+                });
 
                 // add a handler for when we select a textfield
                 textField.setOnMouseClicked(event -> {
+                    // move the caret to the end of the text
+                    textField.positionCaret(textField.getText().length());
                     // toggle highlighting
-                    if (textField.getStyleClass().contains("text-field-selected"))
-                    {
-                        // remove the highlight if we click on a selected cell
-                        textField.getStyleClass().remove("text-field-selected");
-                    }
-                    else
-                    {
-                        // otherwise 
-                        textField.getStyleClass().add("text-field-selected");
-                    }
+                    setHighlight(textField);
                 });
 
                 // add a handler for when we lose focus on a textfield
@@ -101,8 +167,15 @@ public class Sudoku extends Application
                     textField.getStyleClass().add("text-field-highlight");
                     Alert alert = new Alert(AlertType.INFORMATION);
                     alert.setTitle("Possible values");
-                    // TODO: show a list of possible values that can go in this square
-                    alert.setContentText("1 2 3 4 5 6 7 8 9");
+                    // find the row and column of the text field
+                    String id = textField.getId();
+                    String[] parts = id.split("-");
+                    int r = Integer.parseInt(parts[0]);
+                    int c = Integer.parseInt(parts[1]);
+                    Set<Integer> vals = board.getPossibleValues(r, c);
+                    String t = vals.toString();
+                    t = t.substring(1, t.length()-1);
+                    alert.setContentText("Possible values for this square: " + t);
                     alert.showAndWait();
                     textField.getStyleClass().remove("text-field-highlight");
                 });
@@ -110,39 +183,65 @@ public class Sudoku extends Application
                 // using a listener instead of a KEY_TYPED event handler
                 // KEY_TYPED requires the user to hit ENTER to trigger the event
                 textField.textProperty().addListener((observable, oldValue, newValue) -> {
-                    if (!newValue.matches("[1-9]?")) {
-                        // restrict textField to only accept single digit numbers from 1 to 9
-                        textField.setText(oldValue);
+                    if (updatingBoard)
+                    {
+                        updateErrors();
+
+                        return;
                     }
+
                     String id = textField.getId();
                     String[] parts = id.split("-");
                     int r = Integer.parseInt(parts[0]);
                     int c = Integer.parseInt(parts[1]);
                     
-                    if (newValue.length() > 0)
+                    if (newValue.length() == 0 && oldValue.length() > 0)
                     {
-                        try
-                        {
-                            System.out.printf("Setting cell %d, %d to %s\n", r, c, newValue);
-                            int value = Integer.parseInt(newValue);
-                            board.setCell(r, c, value);
-                            // remove the highlight when we set a value
-                            textField.getStyleClass().remove("text-field-selected");
-                        }
-                        catch (NumberFormatException e)
-                        {
-                            // ignore; should never happen
-                        }
-                        catch (Exception e)
-                        {
-                            // TODO: if the value is not a possible value, catch the exception and show an alert
-                            System.out.println("Invalid Value: " + newValue);
-                        }
+                        Move move = new Move(r, c, board.getCell(r, c), 0);
+                        board.addMove(move);
+
+                        board.setCell(r, c, 0);
+
+                        updateErrors();
+
+                        return;
                     }
-                    else
+
+                    if (newValue.length() == 0)
                     {
                         board.setCell(r, c, 0);
+
+                        updateErrors();
+
+                        return;
                     }
+
+                    String first = newValue.substring(0, 1);
+                    String last = newValue.substring(newValue.length() - 1);
+
+                    if (last.matches("[1-9]?")) {
+                        textField.setText(last);
+
+                        int value = Integer.parseInt(last);
+
+                        Move move = new Move(r, c, board.getCell(r, c), value);
+                        board.addMove(move);
+                        
+                        board.setCell(r, c, value);
+                    } else if (first.matches("[1-9]?")) {
+                        textField.setText(first);
+
+                        int value = Integer.parseInt(first);
+
+                        Move move = new Move(r, c, board.getCell(r, c), value);
+                        board.addMove(move);
+
+                        board.setCell(r, c, value);
+                    } else {
+                        textField.setText("");
+                    }
+
+                    updateErrors();
                 });
             }
         }
@@ -187,6 +286,7 @@ public class Sudoku extends Application
 
     private void updateBoard()
     {
+        updatingBoard = true;
         for (int row = 0; row < SIZE; row++)
         {
             for (int col = 0; col < SIZE; col++)
@@ -203,6 +303,7 @@ public class Sudoku extends Application
                 }
             }
         }
+        updatingBoard = false;
     }
 
     private MenuBar createMenuBar(Stage primaryStage)
@@ -227,9 +328,20 @@ public class Sudoku extends Application
                 System.out.println("Selected file: " + sudokuFile.getName());
                 
                 try {
-                    //TODO: loadBoard() method should throw an exception if the file is not a valid sudoku board
                     board = Board.loadBoard(new FileInputStream(sudokuFile));
+                    board.clearMoves();
+                    unfixBoard();
                     updateBoard();
+                    fixBoard();
+                    // loop throught text fields removing the hint class
+                    for (int row = 0; row < SIZE; row++)
+                    {
+                        for (int col = 0; col < SIZE; col++)
+                        {
+                            TextField textField = textFields[row][col];
+                            textField.getStyleClass().remove("text-field-hint");
+                        }
+                    }
                 } catch (Exception e) {
                     // pop up and error window
                     Alert alert = new Alert(AlertType.ERROR);
@@ -290,13 +402,26 @@ public class Sudoku extends Application
         Menu editMenu = new Menu("Edit");
 
         addMenuItem(editMenu, "Undo", () -> {
-            System.out.println("Undo");
-            //TODO: Undo the last move
+            try {
+                board.undo();
+            } catch (IllegalStateException e) {
+                Alert alert = new Alert(AlertType.WARNING);
+                alert.setTitle("Unable to undo");
+                alert.setHeaderText("No moves to undo");
+                alert.setContentText(e.getMessage());
+                alert.showAndWait();
+            }
+            updateBoard();
         });
 
         addMenuItem(editMenu, "Show values entered", () -> {
             System.out.println("Show all the values we've entered since we loaded the board");
-            //TODO: pop up a window showing all of the values we've entered
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Values entered");
+            alert.setHeaderText("Values entered since loading the board");
+            alert.setContentText(board.getMovesArchive());
+            alert.showAndWait();
+
         });
 
         menuBar.getMenus().add(editMenu);
@@ -308,7 +433,17 @@ public class Sudoku extends Application
 
         addMenuItem(hintMenu, "Show hint", () -> {
             System.out.println("Show hint");
-            //TODO: highlight cell where only one legal value is possible
+            showHints();
+        });
+
+        addMenuItem(hintMenu, "Hide used hints", () -> {
+            System.out.println("Hide used hints");
+            hideUsedHints();
+        });
+
+        addMenuItem(hintMenu, "Hide all hints", () -> {
+            System.out.println("Hide all hints");
+            hideAllHints();
         });
 
         menuBar.getMenus().add(hintMenu);
@@ -331,5 +466,122 @@ public class Sudoku extends Application
     public static void main(String[] args) 
     {
         launch(args);
+    }
+
+    public void showHints() {
+        // search through the board for squares that are not 0 and have only one possible value
+        for (int row = 0; row < SIZE; row++)
+        {
+            for (int col = 0; col < SIZE; col++)
+            {
+                if (board.getCell(row, col) == 0)
+                {
+                    // get the possible values for this cell
+                    // if there is only one possible value, highlight the cell
+                    if (board.getPossibleValues(row, col).size() == 1)
+                    {
+                        System.out.println("Hint: " + row + ", " + col + " = " + board.getPossibleValues(row, col));
+                        TextField textField = textFields[row][col];
+                        if (!textField.getStyleClass().contains("text-field-hint")) {
+                            textField.getStyleClass().add("text-field-hint");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void hideUsedHints() {
+        // loop through the board and remove the hint class from all text fields which are not 0
+        for (int row = 0; row < SIZE; row++)
+        {
+            for (int col = 0; col < SIZE; col++)
+            {
+                if (board.getCell(row, col) != 0)
+                {
+                    TextField textField = textFields[row][col];
+                    textField.getStyleClass().remove("text-field-hint");
+                }
+            }
+        }
+    }
+
+    public void hideAllHints() {
+        // loop through the board and remove the hint class from all text fields
+        for (int row = 0; row < SIZE; row++)
+        {
+            for (int col = 0; col < SIZE; col++)
+            {
+                TextField textField = textFields[row][col];
+                textField.getStyleClass().remove("text-field-hint");
+            }
+        }
+    }
+
+    private void fixBoard() {
+        // loop through the board and set the text fields to read only if the value is not 0
+        for (int row = 0; row < SIZE; row++)
+        {
+            for (int col = 0; col < SIZE; col++)
+            {
+                TextField textField = textFields[row][col];
+                if (board.getCell(row, col) != 0)
+                {
+                    textField.setEditable(false);
+                    textField.getStyleClass().add("text-field-fixed");
+                }
+            }
+        }
+    }
+
+    public void unfixBoard() {
+        // loop through the board and set the text fields to write if the value is not 0
+        for (int row = 0; row < SIZE; row++)
+        {
+            for (int col = 0; col < SIZE; col++)
+            {
+                TextField textField = textFields[row][col];
+                textField.setEditable(true);
+                textField.getStyleClass().remove("text-field-fixed");
+            }
+        }
+    }
+
+    // update errors adds the error class to any text field that has an impossible value
+    private void updateErrors() {
+        for (int row = 0; row < SIZE; row++)
+        {
+            for (int col = 0; col < SIZE; col++)
+            {
+                TextField textField = textFields[row][col];
+                if (board.getCell(row, col) == 0) {
+                    textField.getStyleClass().remove("text-field-error");
+                } else {
+                    Set<Integer> possibleValues = board.getPossibleValues(row, col);
+                    if (!possibleValues.contains(board.getCell(row, col))) {
+                        if (!textField.getStyleClass().contains("text-field-error")) {
+                            textField.getStyleClass().add("text-field-error");
+                        }
+                    }
+                    else {
+                        textField.getStyleClass().remove("text-field-error");
+                    }
+                }
+            }
+        }
+    }
+
+    private void setHighlight(TextField textField) {
+        for (int r = 0; r < SIZE; r++)
+        {
+            for (int c = 0; c < SIZE; c++)
+            {
+                TextField textField2 = textFields[r][c];
+                textField.getStyleClass().remove("text-field-selected");
+            }
+        }
+        if (!textField.getStyleClass().contains("text-field-selected")) {
+            textField.getStyleClass().add("text-field-selected");
+        }
     }
 }
