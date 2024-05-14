@@ -408,6 +408,12 @@ public class Sudoku extends Application
             updateBoard();
         });
 
+        // add menu item to reset the board
+        addMenuItem(editMenu, "Reset", () -> {
+            System.out.println("Reset");
+            resetBoard();
+        });
+
         addMenuItem(editMenu, "Show values entered", () -> {
             System.out.println("Show all the values we've entered since we loaded the board");
             Alert alert = new Alert(AlertType.INFORMATION);
@@ -608,6 +614,21 @@ public class Sudoku extends Application
         }
         if (!textField.getStyleClass().contains("text-field-selected")) {
             textField.getStyleClass().add("text-field-selected");
+        }
+    }
+
+    public void resetBoard() {
+        // loop through the board and set all the values which are not fixed to 0
+        for (int row = 0; row < SIZE; row++)
+        {
+            for (int col = 0; col < SIZE; col++)
+            {
+                TextField textField = textFields[row][col];
+                if (!textField.getStyleClass().contains("text-field-fixed")) {
+                    textField.setText("");
+                    board.rawSetCell(row, col, 0);
+                }
+            }
         }
     }
 }
