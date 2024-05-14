@@ -2,21 +2,22 @@
     Document   : style.css
 */
 
-@font-face {
-    font-family: "CitizenCarto";
-    src: url("CitizenCarto.ttf");
-}
-
 .menubar{
-    -fx-font-size: 16pt;
-    -fx-font-family: "CitizenCarto";
-    -fx-background: rgb(0, 0, 0);
+    -fx-font-size: 26px;
+    /* use Times new Roman font*/
+    -fx-font-family: "Times New Roman";
+    -fx-background: transparent, -fx-control-inner-background;
     -fx-base: rgb(255, 255, 255);
+    -fx-border-color: transparent;
+    -fx-padding: 100%;
+}
+.menubar .menuitem {
+    -fx-text-align: center;
 }
 
 .root{
     -fx-font-size: 16pt;
-    -fx-font-family: "CitizenCarto";
+    -fx-font-family: "Times New Roman";
     -fx-background: rgb(255, 255, 255);
     -fx-base: rgb(255, 255, 255);
 }
@@ -69,11 +70,6 @@
     -fx-background-color: rgb(241, 242, 244) !important;
 }
 
-.text-field-highlight {
-    -fx-background-color: rgb(215, 217, 228);
-}
-
-
 .grid-pane .right-border {
     -fx-border-color: black;
     -fx-border-width: 0 2 1 0;
@@ -119,7 +115,7 @@
     -fx-border-width: 0 1 1 0;
 }
 
-.text-field-hint.text-field-highlight {
+.text-field-hint.text-field-selected {
     -fx-background-color: rgb(241, 235, 228) !important;
 }
 .text-field-hint {

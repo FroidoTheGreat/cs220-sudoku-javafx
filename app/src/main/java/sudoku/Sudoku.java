@@ -52,8 +52,6 @@ public class Sudoku extends Application
         gridPane.setAlignment(Pos.CENTER);
         gridPane.getStyleClass().add("grid-pane");
 
-        root.getStylesheets().add(getClass().getResource("/CitizenCarto.ttf").toExternalForm());
-
         // create a 9x9 grid of text fields
         for (int row = 0; row < SIZE; row++)
         {
@@ -197,10 +195,8 @@ public class Sudoku extends Application
                     
                     if (newValue.length() == 0 && oldValue.length() > 0)
                     {
-                        Move move = new Move(r, c, board.getCell(r, c), 0);
-                        board.addMove(move);
-
-                        board.setCell(r, c, 0);
+                        textField.setText("");
+                        board.makeMove(r, c, 0);
 
                         updateErrors();
 
@@ -209,7 +205,8 @@ public class Sudoku extends Application
 
                     if (newValue.length() == 0)
                     {
-                        board.setCell(r, c, 0);
+                        textField.setText("");
+                        board.makeMove(r, c, 0);
 
                         updateErrors();
 
@@ -221,22 +218,15 @@ public class Sudoku extends Application
 
                     if (last.matches("[1-9]?")) {
                         textField.setText(last);
-
-                        int value = Integer.parseInt(last);
-
-                        Move move = new Move(r, c, board.getCell(r, c), value);
-                        board.addMove(move);
                         
-                        board.setCell(r, c, value);
+                        int value = Integer.parseInt(last);
+                        board.makeMove(r, c, value);
                     } else if (first.matches("[1-9]?")) {
                         textField.setText(first);
 
                         int value = Integer.parseInt(first);
+                        board.makeMove(r, c, value);
 
-                        Move move = new Move(r, c, board.getCell(r, c), value);
-                        board.addMove(move);
-
-                        board.setCell(r, c, value);
                     } else {
                         textField.setText("");
                     }
@@ -316,6 +306,17 @@ public class Sudoku extends Application
         //
     	Menu fileMenu = new Menu("File");
 
+        // add a menu item which allows the user to generate a random board
+        addMenuItem(fileMenu, "Generate random board", () -> {
+            System.out.println("Generate random board");
+            board.generateMinimumSolvable();
+            board.clearMoves();
+            hideAllHints();
+            unfixBoard();
+            updateBoard();
+            fixBoard();
+        });
+
         addMenuItem(fileMenu, "Load from file", () -> {
             System.out.println("Load from file");
             FileChooser fileChooser = new FileChooser();
@@ -334,14 +335,7 @@ public class Sudoku extends Application
                     updateBoard();
                     fixBoard();
                     // loop throught text fields removing the hint class
-                    for (int row = 0; row < SIZE; row++)
-                    {
-                        for (int col = 0; col < SIZE; col++)
-                        {
-                            TextField textField = textFields[row][col];
-                            textField.getStyleClass().remove("text-field-hint");
-                        }
-                    }
+                    hideAllHints();
                 } catch (Exception e) {
                     // pop up and error window
                     Alert alert = new Alert(AlertType.ERROR);
@@ -446,6 +440,38 @@ public class Sudoku extends Application
             hideAllHints();
         });
 
+        // solve
+        addMenuItem(hintMenu, "Solve", () -> {
+            System.out.println("Solve");
+            board.solve();
+            updateBoard();
+        });
+
+        // check solvability
+        addMenuItem(hintMenu, "Check solvability", () -> {
+            System.out.println("Check solvability");
+            if (board.getSolvable()) {
+                Alert alert = new Alert(AlertType.INFORMATION);
+                alert.setTitle("Solvability");
+                alert.setHeaderText("This board is solvable");
+                alert.showAndWait();
+            } else {
+                Alert alert = new Alert(AlertType.WARNING);
+                alert.setTitle("Solvability");
+                alert.setHeaderText("This board is not solvable");
+                alert.showAndWait();
+            }
+        });
+
+        // print number of solutions
+        addMenuItem(hintMenu, "Print number of solutions", () -> {
+            System.out.println("Print number of solutions");
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Number of solutions");
+            alert.setHeaderText("Number of solutions: " + board.numSolutions());
+            alert.showAndWait();
+        });
+
         menuBar.getMenus().add(hintMenu);
 
         return menuBar;
@@ -459,6 +485,7 @@ public class Sudoku extends Application
     private void addMenuItem(Menu menu, String name, Runnable action)
     {
         MenuItem menuItem = new MenuItem(name);
+        menuItem.getStyleClass().add("menuitem");
         menuItem.setOnAction(event -> action.run());
         menu.getItems().add(menuItem);
     }
@@ -576,7 +603,6 @@ public class Sudoku extends Application
         {
             for (int c = 0; c < SIZE; c++)
             {
-                TextField textField2 = textFields[r][c];
                 textField.getStyleClass().remove("text-field-selected");
             }
         }

@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class Board
 {
@@ -19,6 +20,18 @@ public class Board
         board = new int[9][9];
         moves = new Stack<>();
         movesArchive = new ArrayList<>();
+    }
+
+    public Board(Board b)
+    {
+        board = new int[9][9];
+        for (int r = 0; r < 9; r++)
+        {
+            for (int c = 0; c < 9; c++)
+            {
+                rawSetCell(r, c, b.getCell(r, c));
+            }
+        }
     }
 
     public static Board loadBoard(InputStream in)
@@ -45,7 +58,7 @@ public class Board
 
     public boolean isLegal(int row, int col, int value)
     {
-        return value >= 1 && value <= 9 && getPossibleValues(row, col).contains(value);
+        return value >= 1 && value <= 9;
     }
 
     public void setCell(int row, int col, int value)
@@ -135,6 +148,20 @@ public class Board
         movesArchive.add(move);
     }
 
+    public void makeMove(int r, int c, int value) {
+        if (value == 0 || isLegal(r, c, value)) {
+            int oldValue = getCell(r, c);
+            System.out.println("Setting cell: " + r + ", " + c + " = " + value);
+            setCell(r, c, value);
+            if (oldValue != value) {
+                System.out.println("adding move: " + r + ", " + c + " = " + oldValue + " to " + value);
+                addMove(new Move(r, c, oldValue, value));
+            }
+        } else {
+            throw new IllegalArgumentException("Invalid move: " + r + ", " + c + " = " + value);
+        }
+    }
+
     public String getMovesArchive()
     {
         String s = "";
@@ -160,5 +187,158 @@ public class Board
         {
             throw new IllegalStateException("No moves to undo");
         }
+    }
+
+    public boolean isSolved()
+    {
+        for (int r = 0; r < 9; r++)
+        {
+            for (int c = 0; c < 9; c++)
+            {
+                if (getCell(r, c) == 0 || !getPossibleValues(r, c).contains(getCell(r, c)));
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public void clearBoard()
+    {
+        clearMoves();
+        for (int r = 0; r < 9; r++)
+        {
+            for (int c = 0; c < 9; c++)
+            {
+                rawSetCell(r, c, 0);
+            }
+        }
+    }
+
+    public void generateRandomBoard() {
+        clearBoard();
+        Board newBoard = generateCell();
+        copy(newBoard);
+    }
+
+    public void generateMinimumSolvable() {
+        generateRandomBoard();
+
+        // store a list of all possible cells
+        Stack<int[]> possibleCells = new Stack<>();
+        for (int r = 0; r < 9; r++) {
+            for (int c = 0; c < 9; c++) {
+                possibleCells.push(new int[] {r, c});
+            }
+        }
+        // randomize
+        Collections.shuffle(possibleCells);
+
+        // try removing each cell and checking if the board is still solvable
+        // remove only one cell
+        for (int i = 1; i < 82; i++) {
+            int[] coords = possibleCells.pop();
+            int r = coords[0];
+            int c = coords[1];
+            int value = getCell(r, c);
+            rawSetCell(r, c, 0);
+            if (numSolutions() > 1) {
+                rawSetCell(r, c, value);
+                System.out.println("COMPLETE!");
+                return;
+            }
+        }
+    }
+
+    public int numSolutions() {
+        Board b = new Board(this);
+
+        return numSolutionsHelper(b);
+    }
+    private int numSolutionsHelper(Board b) {
+        Board b2 = new Board(b);
+        int numSolutions = 0;
+
+        // get the coordinates of the next empty cell, then try setting it to the next possible value
+        int[] coords = b2.findNextCoords();
+        if (coords == null) {
+            return numSolutions + 1;
+        }
+        int r = coords[0];
+        int c = coords[1];
+
+        // try setting the cell to each possible value
+        for (int value : b2.getPossibleValues(r, c)) {
+            b2.rawSetCell(r, c, value);
+            numSolutions += numSolutionsHelper(b2);
+        }
+
+
+        return numSolutions;
+    }
+
+    public void copy(Board b) {
+        for (int r = 0; r < 9; r++) {
+            for (int c = 0; c < 9; c++) {
+                rawSetCell(r, c, b.getCell(r, c));
+            }
+        }
+    }
+
+    public boolean getSolvable() {
+        return generateCell() != null;
+    }
+
+    public void solve() {
+        Board solution = generateCell();
+        if (solution != null) {
+            copy(solution);
+        }
+    }
+
+    private Board generateCell() {
+        Board b = new Board(this);
+
+        // get the coordinates of the next empty cell, then try setting it to the next possible value
+        int[] coords = findNextCoords();
+        if (coords == null) {
+            return b;
+        }
+
+        int r = coords[0];
+        int c = coords[1];
+
+        List<Integer> possibleValues = new ArrayList<>();
+        for (int i = 1; i <= 9; i++) {
+            if (b.getPossibleValues(r, c).contains(i)) {
+                possibleValues.add(i);
+            }
+        }
+        // shuffle the possible values
+        Collections.shuffle(possibleValues);
+
+        // recursively try setting the cell to each possible value
+        for (int value : possibleValues) {
+            b.rawSetCell(r, c, value);
+            Board result = b.generateCell();
+            if (result != null) {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    private int[] findNextCoords() {
+        // loop through the board until an empty cell is found, then return the coordinates of that cell
+        for (int i = 0; i < 81; i++) {
+            int r = i / 9;
+            int c = i % 9;
+            if (getCell(r, c) == 0) {
+                return new int[] {r, c};
+            }
+        }      
+        return null;  
     }
 }
